@@ -46,13 +46,8 @@ fn box_num(r: usize, c: usize) -> usize {
     return g;
 }
 
-fn solve_sudoku_from(
-        board: &mut Sudoku,
-        r: usize,
-        c: usize,
-        row_vals: &mut [[bool; 9]; 9],
-        col_vals: &mut [[bool; 9]; 9],
-        box_vals: &mut [[bool; 9]; 9]) -> bool {
+fn solve_sudoku_from(board: &mut Sudoku, r: usize, c: usize, row_vals: &mut [[bool; 9]; 9],
+                     col_vals: &mut [[bool; 9]; 9], box_vals: &mut [[bool; 9]; 9]) -> bool {
     match board[r][c] {
         Some(_d) => {
             if c + 1 < board[0].len() {
@@ -137,7 +132,7 @@ pub fn read_puzzle(reader: &mut impl Read) -> Option<Box<Sudoku>> {
             j += 1;
         }
     }
-    Some(puzzle)
+    return Some(puzzle);
 }
 
 // Do a simple check that the puzzle is valid.

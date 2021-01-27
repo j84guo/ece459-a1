@@ -40,10 +40,26 @@ pub fn solve_puzzle(board: &mut Sudoku) {
 }
 
 fn grid_num(r: usize, c: usize) -> usize {
-    let mut g = r / 3;
-    g *= 3;
-    g += c / 3;
-    return g;
+    // We could compute the grid num each time it's needed, but it's faster to make the grid nums
+    // statically allocated - there are only 9x9=81 of them anyways.
+    //
+    // If we wanted to compute the grid nums, the formula is:
+    // let mut g = r / 3;
+    // g *= 3;
+    // g += c / 3;
+    // return g;
+    static GRID_NUMS: [[usize; 9]; 9] = [
+        [0, 0, 0, 1, 1, 1, 2, 2, 2],
+        [0, 0, 0, 1, 1, 1, 2, 2, 2],
+        [0, 0, 0, 1, 1, 1, 2, 2, 2],
+        [3, 3, 3, 4, 4, 4, 5, 5, 5],
+        [3, 3, 3, 4, 4, 4, 5, 5, 5],
+        [3, 3, 3, 4, 4, 4, 5, 5, 5],
+        [6, 6, 6, 7, 7, 7, 8, 8, 8],
+        [6, 6, 6, 7, 7, 7, 8, 8, 8],
+        [6, 6, 6, 7, 7, 7, 8, 8, 8],
+    ];
+    return GRID_NUMS[r][c];
 }
 
 fn solve_sudoku_from(board: &mut Sudoku, r: usize, c: usize, row_vals: &mut [[bool; 9]; 9],

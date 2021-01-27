@@ -2,7 +2,9 @@
 
 use crate::Sudoku;
 use curl::easy;
+use curl::multi;
 use std::io::Write;
+use curl::multi::Easy2Handle;
 
 const URL: &str = "54.209.48.141:4590/verify";  // the verification server
 const MATRIX_LENGTH: usize = 202;
@@ -61,6 +63,13 @@ fn create_easy(puzzle: Box<Sudoku>) -> Result<easy::Easy2<SudokuHandler>, curl::
     return Ok(easy);  // result is a curl easy handle
 }
 
+fn create_multi(max_total_connections: usize) -> Result<multi::Multi, curl::MultiError> {
+    let mut multi = multi::Multi::new();
+    multi.pipelining(true, true)?;
+    multi.set_max_total_connections(max_total_connections)?;
+    return Ok(multi);
+}
+
 // convert a puzzle into JSON format to send to the server
 fn write_puzzle_to_json(puzzle: &Sudoku, writer: &mut impl Write) -> std::io::Result<()> {
     write!(writer, "{{\"content\": [")?;
@@ -87,16 +96,32 @@ fn write_puzzle_to_json(puzzle: &Sudoku, writer: &mut impl Write) -> std::io::Re
 }
 
 // This function is called from main to verifies all of the puzzles
-pub fn verify_puzzles(puzzles: impl Iterator<Item = Box<Sudoku>>, num_connections: usize) {
+pub fn verify_puzzles(puzzles: impl Iterator<Item = Box<Sudoku>>, max_total_connections: usize) {
     let mut total = 0;
     let mut verified = 0;
 
-    // the following is the single-threaded version
+    let mut owned_easies: Vec<Easy2Handle<SudokuHandler>> = vec![];
+    let multi = create_multi(max_total_connections).unwrap();
+
+    // Add all easy handles to the multi
     for puzzle in puzzles {
         let easy = create_easy(puzzle).unwrap();
-        easy.perform().unwrap();
-        if easy.get_ref().result { verified += 1; }
+        let mut owned_easy = multi.add2(easy).unwrap();
+        owned_easy.set_token(owned_easies.len());
+        owned_easies.push(owned_easy);
         total += 1;
+    }
+
+    // Wait until they're all done
+    while multi.perform().unwrap() > 0 {
+        multi.wait(&mut[], std::time::Duration::from_secs(30));
+    }
+
+    for owned_easy in owned_easies.into_iter() {
+        let mut easy = multi.remove2(owned_easy).unwrap();
+        if easy.get_ref().result {
+            verified += 1;
+        }
     }
 
     println!("Verified {} out of {}", verified, total);

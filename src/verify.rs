@@ -30,7 +30,7 @@ impl easy::Handler for SudokuHandler {  // this defines callbacks for curl to us
         match std::str::from_utf8(data) {
             Ok(resp) => {
                 self.result = resp == "1";  // "1" means verification succeeded
-                println!("Server returned: {}", resp);
+                // println!("Server returned: {}", resp);
             }
             Err(_) => println!("Garbage server response"),
         }
@@ -95,8 +95,14 @@ fn write_puzzle_to_json(puzzle: &Sudoku, writer: &mut impl Write) -> std::io::Re
     return Ok(());
 }
 
-// This function is called from main to verifies all of the puzzles
+// This function is called from main to verify all of the puzzles
 pub fn verify_puzzles(puzzles: impl Iterator<Item = Box<Sudoku>>, max_total_connections: usize) {
+    verify_puzzles_multi_poll(puzzles, max_total_connections);
+    // verify_puzzles_easy(puzzles, max_total_connections);
+}
+
+// Use a multi handle - poll the easy handles using curl_multi_wait and curl_multi_perform
+fn verify_puzzles_multi_poll(puzzles: impl Iterator<Item = Box<Sudoku>>, max_total_connections: usize) {
     let mut total = 0;
     let mut verified = 0;
 
@@ -122,6 +128,22 @@ pub fn verify_puzzles(puzzles: impl Iterator<Item = Box<Sudoku>>, max_total_conn
         if easy.get_ref().result {
             verified += 1;
         }
+    }
+
+    println!("Verified {} out of {}", verified, total);
+}
+
+// Use easy handles in a single thread
+fn verify_puzzles_easy(puzzles: impl Iterator<Item = Box<Sudoku>>, num_connections: usize) {
+    let mut total = 0;
+    let mut verified = 0;
+
+    // the following is the single-threaded version
+    for puzzle in puzzles {
+        let easy = create_easy(puzzle).unwrap();
+        easy.perform().unwrap();
+        if easy.get_ref().result { verified += 1; }
+        total += 1;
     }
 
     println!("Verified {} out of {}", verified, total);

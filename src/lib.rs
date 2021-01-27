@@ -21,7 +21,7 @@ pub fn solve_puzzle(board: &mut Sudoku) {
         for c in 0usize..=8 {
             match board[r][c] {
                 Some(d) => {
-                    let g = box_num(r, c);
+                    let g = grid_num(r, c);
                     let i = (d.get() - 1) as usize;
                     if row_vals[r][i] || col_vals[c][i] || grid_vals[g][i] {
                         panic!("Invalid initial board!");
@@ -39,7 +39,7 @@ pub fn solve_puzzle(board: &mut Sudoku) {
     solve_sudoku_from(board, 0, 0, &mut row_vals, &mut col_vals, &mut grid_vals);
 }
 
-fn box_num(r: usize, c: usize) -> usize {
+fn grid_num(r: usize, c: usize) -> usize {
     let mut g = r / 3;
     g *= 3;
     g += c / 3;
@@ -58,7 +58,7 @@ fn solve_sudoku_from(board: &mut Sudoku, r: usize, c: usize, row_vals: &mut [[bo
             return true;
         },
         None => {
-            let g = box_num(r, c);
+            let g = grid_num(r, c);
             for i in 0usize..=8 {
                 if row_vals[r][i] || col_vals[c][i] || grid_vals[g][i] {
                     continue;

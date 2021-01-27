@@ -15,10 +15,10 @@ struct SudokuHandler {
 
 impl SudokuHandler {
     pub fn new(puzzle: Box<Sudoku>) -> Self {
-        Self {
+        return Self {
             puzzle,
             result: false,
-        }
+        };
     }
 }
 
@@ -32,7 +32,7 @@ impl easy::Handler for SudokuHandler {  // this defines callbacks for curl to us
             }
             Err(_) => println!("Garbage server response"),
         }
-        Ok(data.len())  // tell curl how many bytes we processed from data
+        return Ok(data.len());  // tell curl how many bytes we processed from data
     }
 
     // this function is called by curl when it wants more data to send to the server
@@ -41,7 +41,7 @@ impl easy::Handler for SudokuHandler {  // this defines callbacks for curl to us
         write_puzzle_to_json(&self.puzzle, &mut data).expect("JSON writing error");
         let end = data.as_ptr();  // find data offset
         let len = end as usize - start as usize;
-        Ok(len)  // tell curl how many bytes we wrote into data
+        return Ok(len);  // tell curl how many bytes we wrote into data
     }
 }
 
@@ -58,7 +58,7 @@ fn create_easy(puzzle: Box<Sudoku>) -> Result<easy::Easy2<SudokuHandler>, curl::
     easy.url(URL)?;
     easy.post(true)?;  // we use HTTP "POST" instead of "GET"
     easy.post_field_size(MATRIX_LENGTH as u64)?;
-    Ok(easy)  // result is a curl easy handle
+    return Ok(easy);  // result is a curl easy handle
 }
 
 // convert a puzzle into JSON format to send to the server
@@ -83,7 +83,7 @@ fn write_puzzle_to_json(puzzle: &Sudoku, writer: &mut impl Write) -> std::io::Re
     }
 
     write!(writer, "]}}")?;
-    Ok(())
+    return Ok(());
 }
 
 // This function is called from main to verifies all of the puzzles

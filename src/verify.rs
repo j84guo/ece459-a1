@@ -4,7 +4,7 @@ use crate::Sudoku;
 use curl::easy;
 use curl::multi;
 use std::io::Write;
-use curl::multi::Easy2Handle;
+use curl::multi::{Easy2Handle, Message};
 
 const URL: &str = "54.209.48.141:4590/verify";  // the verification server
 const MATRIX_LENGTH: usize = 202;
@@ -30,7 +30,7 @@ impl easy::Handler for SudokuHandler {  // this defines callbacks for curl to us
         match std::str::from_utf8(data) {
             Ok(resp) => {
                 self.result = resp == "1";  // "1" means verification succeeded
-                // println!("Server returned: {}", resp);
+                println!("Server returned: {}", resp);
             }
             Err(_) => println!("Garbage server response"),
         }
@@ -98,7 +98,6 @@ fn write_puzzle_to_json(puzzle: &Sudoku, writer: &mut impl Write) -> std::io::Re
 // This function is called from main to verify all of the puzzles
 pub fn verify_puzzles(puzzles: impl Iterator<Item = Box<Sudoku>>, max_total_connections: usize) {
     verify_puzzles_multi_poll(puzzles, max_total_connections);
-    // verify_puzzles_easy(puzzles, max_total_connections);
 }
 
 // Use a multi handle - poll the easy handles using curl_multi_wait and curl_multi_perform
@@ -113,18 +112,30 @@ fn verify_puzzles_multi_poll(puzzles: impl Iterator<Item = Box<Sudoku>>, max_tot
     for puzzle in puzzles {
         let easy = create_easy(puzzle).unwrap();
         let mut owned_easy = multi.add2(easy).unwrap();
-        owned_easy.set_token(owned_easies.len());
+        owned_easy.set_token(owned_easies.len()).unwrap();
         owned_easies.push(owned_easy);
         total += 1;
     }
 
+    let check_msg = |msg: Message| {
+        let token = msg.token().unwrap();
+        match msg.result_for2(&owned_easies[token]).unwrap() {
+            Ok(_) => (),
+            Err(e) => {
+                panic!("Transfer {} failed with error {}", token, e);
+            }
+        }
+    };
+
     // Wait until they're all done
     while multi.perform().unwrap() > 0 {
-        multi.wait(&mut[], std::time::Duration::from_secs(30));
+        multi.messages(check_msg);
+        multi.wait(&mut[], std::time::Duration::from_secs(30)).unwrap();
     }
+    multi.messages(check_msg);
 
     for owned_easy in owned_easies.into_iter() {
-        let mut easy = multi.remove2(owned_easy).unwrap();
+        let easy = multi.remove2(owned_easy).unwrap();
         if easy.get_ref().result {
             verified += 1;
         }
@@ -134,7 +145,8 @@ fn verify_puzzles_multi_poll(puzzles: impl Iterator<Item = Box<Sudoku>>, max_tot
 }
 
 // Use easy handles in a single thread
-fn verify_puzzles_easy(puzzles: impl Iterator<Item = Box<Sudoku>>, num_connections: usize) {
+#[allow(dead_code)]
+fn verify_puzzles_easy(puzzles: impl Iterator<Item = Box<Sudoku>>) {
     let mut total = 0;
     let mut verified = 0;
 

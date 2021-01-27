@@ -23,10 +23,8 @@ pub fn solve_puzzle(board: &mut Sudoku) {
                 Some(d) => {
                     let g = box_num(r, c);
                     let i = (d.get() - 1) as usize;
-                    if row_vals[r][i]
-                        || col_vals[c][i]
-                        || box_vals[g][i] {
-                        panic!("Invalid board!");
+                    if row_vals[r][i] || col_vals[c][i] || box_vals[g][i] {
+                        panic!("Invalid initial board!");
                     }
                     row_vals[r][i] = true;
                     col_vals[c][i] = true;
@@ -37,13 +35,8 @@ pub fn solve_puzzle(board: &mut Sudoku) {
         }
     }
 
-    solve_sudoku_from(
-        board,
-        0,
-        0,
-        &mut row_vals,
-        &mut col_vals,
-        &mut box_vals);
+    // Expect true, although we don't check
+    solve_sudoku_from(board, 0, 0, &mut row_vals, &mut col_vals, &mut box_vals);
 }
 
 fn box_num(r: usize, c: usize) -> usize {
@@ -72,9 +65,7 @@ fn solve_sudoku_from(
         None => {
             let g = box_num(r, c);
             for i in 0usize..=8 {
-                if row_vals[r][i]
-                    || col_vals[c][i]
-                    || box_vals[g][i] {
+                if row_vals[r][i] || col_vals[c][i] || box_vals[g][i] {
                     continue;
                 }
                 board[r][c] = NonZeroU8::new((i + 1) as u8);
@@ -188,7 +179,7 @@ pub fn check_puzzle(puzzle: &Sudoku) -> bool {
         }
     }
 
-    // Check that each subgrid is valid
+    // Check that each 3x3 box is valid
     for i in (0..7).step_by(3) {
         for j in (0..7).step_by(3) {
             let mut seen = [false; 9];
@@ -213,5 +204,5 @@ pub fn check_puzzle(puzzle: &Sudoku) -> bool {
         }
     }
 
-    true
+    return true;
 }

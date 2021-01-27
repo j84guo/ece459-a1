@@ -42,6 +42,8 @@ fn main() {
             } else if !check_puzzle(&puzzle) {  // verify the solved puzzle
                 println!("Puzzle {} does not pass verifier:", puzzle_number);
                 print_puzzle(&puzzle);
+            } else {
+                println!("Puzzle {} passes!", puzzle_number);
             }
             puzzle_number += 1;
         }
@@ -49,6 +51,9 @@ fn main() {
         // read all the solutions from the file into a vector
         let mut slns = vec![];
         while let Some(puzzle) = read_puzzle(&mut solution_reader) {
+            if !check_puzzle(&puzzle) {
+                println!("Invalid: {:?}", puzzle);
+            }
             slns.push(puzzle);
         }
         verify::verify_puzzles(slns.into_iter(), 10000);

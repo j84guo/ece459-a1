@@ -12,23 +12,94 @@ type Sudoku = [[Option<NonZeroU8>; 9]; 9];
 
 // This function is called by main. It calls solve() to recursively find the solution.
 // The puzzle is modified in-place.
-pub fn solve_puzzle(puzzle: &mut Sudoku) {
-    solve(puzzle, 0, 0);
+pub fn solve_puzzle(board: &mut Sudoku) {
+    let mut row_vals = [[false; 9]; 9];
+    let mut col_vals = [[false; 9]; 9];
+    let mut box_vals = [[false; 9]; 9];
+
+    for r in 0usize..=8 {
+        for c in 0usize..=8 {
+            match board[r][c] {
+                Some(d) => {
+                    let g = box_num(r, c);
+                    let i = (d.get() - 1) as usize;
+                    if row_vals[r][i]
+                        || col_vals[c][i]
+                        || box_vals[g][i] {
+                        panic!("Invalid board!");
+                    }
+                    row_vals[r][i] = true;
+                    col_vals[c][i] = true;
+                    box_vals[g][i] = true;
+                },
+                None => continue,
+            }
+        }
+    }
+
+    solve_sudoku_from(
+        board,
+        0,
+        0,
+        &mut row_vals,
+        &mut col_vals,
+        &mut box_vals);
 }
 
-// Fills in the empty positions in the puzzle with the right values, using a
-// recursive brute force approach. Modify the puzzle in place. Return true if
-// solved successfully, false if unsuccessful. You may modify the function signature
-// if you need/wish.
-fn solve(puzzle: &mut Sudoku, mut row: usize, mut col: usize) -> bool {
-    false
+fn box_num(r: usize, c: usize) -> usize {
+    let mut g = r / 3;
+    g *= 3;
+    g += c / 3;
+    return g;
 }
 
-// Helper that checks if a specific square in the puzzle can take on
-// a given value. Return true if that value is allowed in that square, false otherwise.
-// You can choose not to use this if you prefer.
-fn check_square(puzzle: &Sudoku, row: usize, col: usize, val: NonZeroU8) -> bool {
-    false
+fn solve_sudoku_from(
+        board: &mut Sudoku,
+        r: usize,
+        c: usize,
+        row_vals: &mut [[bool; 9]; 9],
+        col_vals: &mut [[bool; 9]; 9],
+        box_vals: &mut [[bool; 9]; 9]) -> bool {
+    match board[r][c] {
+        Some(_d) => {
+            if c + 1 < board[0].len() {
+                return solve_sudoku_from(board, r, c + 1, row_vals, col_vals, box_vals);
+            } else if r + 1 < board.len() {
+                return solve_sudoku_from(board, r + 1, 0, row_vals, col_vals, box_vals);
+            }
+            return true;
+        },
+        None => {
+            let g = box_num(r, c);
+            for i in 0usize..=8 {
+                if row_vals[r][i]
+                    || col_vals[c][i]
+                    || box_vals[g][i] {
+                    continue;
+                }
+                board[r][c] = NonZeroU8::new((i + 1) as u8);
+                row_vals[r][i] = true;
+                col_vals[c][i] = true;
+                box_vals[g][i] = true;
+                if c + 1 < board[0].len() {
+                    if solve_sudoku_from(board, r, c + 1, row_vals, col_vals, box_vals) {
+                        return true;
+                    }
+                } else if r + 1 < board.len() {
+                    if solve_sudoku_from(board, r + 1, 0, row_vals, col_vals, box_vals) {
+                        return true;
+                    }
+                } else {
+                    return true;
+                }
+                board[r][c] = None;
+                row_vals[r][i] = false;
+                col_vals[c][i] = false;
+                box_vals[g][i] = false;
+            }
+            return false;
+        }
+    }
 }
 
 // Helper for printing a sudoku puzzle to stdout for debugging.
@@ -60,10 +131,21 @@ pub fn read_puzzle(reader: &mut impl Read) -> Option<Box<Sudoku>> {
     }
 
     let mut puzzle = Box::new([[None; 9]; 9]);
-
     // Fill in the puzzle matrix. Ignore the non-puzzle input bytes.
+    for i in 0..9 {
+        let mut j = 0;
+        while j < 9 {
+            let b = bytes.next().expect("unexpected EOF");
 
-
+            let elem = match b {
+                b'1'..=b'9' => NonZeroU8::new(b - b'0'),
+                b'.' => None,
+                _ => continue,
+            };
+            puzzle[i][j] = elem;
+            j += 1;
+        }
+    }
     Some(puzzle)
 }
 
@@ -73,10 +155,63 @@ pub fn read_puzzle(reader: &mut impl Read) -> Option<Box<Sudoku>> {
 // down an error if your puzzles are not being solved correctly.)
 pub fn check_puzzle(puzzle: &Sudoku) -> bool {
     // Check that each row is valid
+    for r in 0..9 {
+        let mut seen = [false; 9];
+        for c in 0..9 {
+            match puzzle[r][c] {
+                None => return false,
+                Some(val) => {
+                    let val = val.get() as usize;
+                    if seen[val - 1] {
+                        return false;
+                    }
+                    seen[val - 1] = true;
+                }
+            }
+        }
+    }
 
     // Check that each column is valid
+    for c in 0..9 {
+        let mut seen = [false; 9];
+        for r in 0..9 {
+            match puzzle[r][c] {
+                None => return false,
+                Some(val) => {
+                    let val = val.get() as usize;
+                    if seen[val - 1] {
+                        return false;
+                    }
+                    seen[val - 1] = true;
+                }
+            }
+        }
+    }
 
     // Check that each subgrid is valid
+    for i in (0..7).step_by(3) {
+        for j in (0..7).step_by(3) {
+            let mut seen = [false; 9];
+            let mut r = i;
+            while r < i + 3 {
+                let mut c = j;
+                while c < j + 3 {
+                    match puzzle[r][c] {
+                        None => return false,
+                        Some(val) => {
+                            let val = val.get() as usize;
+                            if seen[val - 1] {
+                                return false;
+                            }
+                            seen[val - 1] = true;
+                        }
+                    }
+                    c += 1;
+                }
+                r += 1;
+            }
+        }
+    }
 
     true
 }

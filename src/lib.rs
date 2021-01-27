@@ -15,7 +15,7 @@ type Sudoku = [[Option<NonZeroU8>; 9]; 9];
 pub fn solve_puzzle(board: &mut Sudoku) {
     let mut row_vals = [[false; 9]; 9];
     let mut col_vals = [[false; 9]; 9];
-    let mut box_vals = [[false; 9]; 9];
+    let mut grid_vals = [[false; 9]; 9];
 
     for r in 0usize..=8 {
         for c in 0usize..=8 {
@@ -23,12 +23,12 @@ pub fn solve_puzzle(board: &mut Sudoku) {
                 Some(d) => {
                     let g = box_num(r, c);
                     let i = (d.get() - 1) as usize;
-                    if row_vals[r][i] || col_vals[c][i] || box_vals[g][i] {
+                    if row_vals[r][i] || col_vals[c][i] || grid_vals[g][i] {
                         panic!("Invalid initial board!");
                     }
                     row_vals[r][i] = true;
                     col_vals[c][i] = true;
-                    box_vals[g][i] = true;
+                    grid_vals[g][i] = true;
                 },
                 None => continue,
             }
@@ -36,7 +36,7 @@ pub fn solve_puzzle(board: &mut Sudoku) {
     }
 
     // Expect true, although we don't check
-    solve_sudoku_from(board, 0, 0, &mut row_vals, &mut col_vals, &mut box_vals);
+    solve_sudoku_from(board, 0, 0, &mut row_vals, &mut col_vals, &mut grid_vals);
 }
 
 fn box_num(r: usize, c: usize) -> usize {
@@ -47,32 +47,32 @@ fn box_num(r: usize, c: usize) -> usize {
 }
 
 fn solve_sudoku_from(board: &mut Sudoku, r: usize, c: usize, row_vals: &mut [[bool; 9]; 9],
-                     col_vals: &mut [[bool; 9]; 9], box_vals: &mut [[bool; 9]; 9]) -> bool {
+                     col_vals: &mut [[bool; 9]; 9], grid_vals: &mut [[bool; 9]; 9]) -> bool {
     match board[r][c] {
         Some(_d) => {
             if c + 1 < board[0].len() {
-                return solve_sudoku_from(board, r, c + 1, row_vals, col_vals, box_vals);
+                return solve_sudoku_from(board, r, c + 1, row_vals, col_vals, grid_vals);
             } else if r + 1 < board.len() {
-                return solve_sudoku_from(board, r + 1, 0, row_vals, col_vals, box_vals);
+                return solve_sudoku_from(board, r + 1, 0, row_vals, col_vals, grid_vals);
             }
             return true;
         },
         None => {
             let g = box_num(r, c);
             for i in 0usize..=8 {
-                if row_vals[r][i] || col_vals[c][i] || box_vals[g][i] {
+                if row_vals[r][i] || col_vals[c][i] || grid_vals[g][i] {
                     continue;
                 }
                 board[r][c] = NonZeroU8::new((i + 1) as u8);
                 row_vals[r][i] = true;
                 col_vals[c][i] = true;
-                box_vals[g][i] = true;
+                grid_vals[g][i] = true;
                 if c + 1 < board[0].len() {
-                    if solve_sudoku_from(board, r, c + 1, row_vals, col_vals, box_vals) {
+                    if solve_sudoku_from(board, r, c + 1, row_vals, col_vals, grid_vals) {
                         return true;
                     }
                 } else if r + 1 < board.len() {
-                    if solve_sudoku_from(board, r + 1, 0, row_vals, col_vals, box_vals) {
+                    if solve_sudoku_from(board, r + 1, 0, row_vals, col_vals, grid_vals) {
                         return true;
                     }
                 } else {
@@ -81,7 +81,7 @@ fn solve_sudoku_from(board: &mut Sudoku, r: usize, c: usize, row_vals: &mut [[bo
                 board[r][c] = None;
                 row_vals[r][i] = false;
                 col_vals[c][i] = false;
-                box_vals[g][i] = false;
+                grid_vals[g][i] = false;
             }
             return false;
         }
@@ -142,16 +142,16 @@ pub fn read_puzzle(reader: &mut impl Read) -> Option<Box<Sudoku>> {
 pub fn check_puzzle(puzzle: &Sudoku) -> bool {
     // Check that each row is valid
     for r in 0..9 {
-        let mut seen = [false; 9];
+        let mut row_vals = [false; 9];
         for c in 0..9 {
             match puzzle[r][c] {
                 None => return false,
                 Some(val) => {
                     let val = val.get() as usize;
-                    if seen[val - 1] {
+                    if row_vals[val - 1] {
                         return false;
                     }
-                    seen[val - 1] = true;
+                    row_vals[val - 1] = true;
                 }
             }
         }
@@ -159,16 +159,16 @@ pub fn check_puzzle(puzzle: &Sudoku) -> bool {
 
     // Check that each column is valid
     for c in 0..9 {
-        let mut seen = [false; 9];
+        let mut col_vals = [false; 9];
         for r in 0..9 {
             match puzzle[r][c] {
                 None => return false,
                 Some(val) => {
                     let val = val.get() as usize;
-                    if seen[val - 1] {
+                    if col_vals[val - 1] {
                         return false;
                     }
-                    seen[val - 1] = true;
+                    col_vals[val - 1] = true;
                 }
             }
         }
@@ -177,7 +177,7 @@ pub fn check_puzzle(puzzle: &Sudoku) -> bool {
     // Check that each 3x3 box is valid
     for i in (0..7).step_by(3) {
         for j in (0..7).step_by(3) {
-            let mut seen = [false; 9];
+            let mut grid_vals = [false; 9];
             let mut r = i;
             while r < i + 3 {
                 let mut c = j;
@@ -186,10 +186,10 @@ pub fn check_puzzle(puzzle: &Sudoku) -> bool {
                         None => return false,
                         Some(val) => {
                             let val = val.get() as usize;
-                            if seen[val - 1] {
+                            if grid_vals[val - 1] {
                                 return false;
                             }
-                            seen[val - 1] = true;
+                            grid_vals[val - 1] = true;
                         }
                     }
                     c += 1;

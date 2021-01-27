@@ -42,8 +42,6 @@ fn main() {
             } else if !check_puzzle(&puzzle) {  // verify the solved puzzle
                 println!("Puzzle {} does not pass verifier:", puzzle_number);
                 print_puzzle(&puzzle);
-            } else {
-                println!("Puzzle {} passes!", puzzle_number);
             }
             puzzle_number += 1;
         }

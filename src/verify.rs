@@ -129,10 +129,10 @@ fn verify_puzzles_multi_poll(puzzles: impl Iterator<Item = Box<Sudoku>>, max_tot
 
     // Wait until they're all done
     while multi.perform().unwrap() > 0 {
-        multi.messages(check_msg);
+        multi.messages(check_msg); // Panic on connection error
         multi.wait(&mut[], std::time::Duration::from_secs(30)).unwrap();
     }
-    multi.messages(check_msg);
+    multi.messages(check_msg); // Panic on connection error
 
     for owned_easy in owned_easies.into_iter() {
         let easy = multi.remove2(owned_easy).unwrap();
